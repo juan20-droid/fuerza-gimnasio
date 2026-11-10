@@ -1,10 +1,9 @@
 {
-  "name": "Fuerza — Mi gimnasio",
-  "short_name": "Fuerza",
-  "start_url": "./index.html",
+  "name": "FUERZA - Mi gimnasio",
+  "short_name": "FUERZA",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0d110f",
   "theme_color": "#101411",
-  "description": "Rutinas de cinco días y control de cargas del gimnasio.",
   "icons": []
 }
