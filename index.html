@@ -71,7 +71,21 @@ footer{text-align:center;color:#738078;font-size:10px;padding:15px}
 <section id="rutina" class="page">
  <div class="row"><div><div class="eyebrow">Plan semanal</div><h2>Entrenamientos</h2></div><span class="pill">Principiante–intermedio</span></div>
  <div class="daylist" id="dayButtons"></div><p class="tiny">Rutinas según tus tablas. Elige el día de entrenamiento que quieras realizar; el calendario de turnos es independiente.</p>
- <div class="card"><div class="row"><h3 id="dayTitle">Día 1</h3><span class="pill" id="dayFocus"></span></div><p class="notice"><b>Duración objetivo: 75–90 min.</b> Calentamiento 10 min · fuerza 55–65 min · cardio suave opcional 10–15 min · vuelta a la calma 5 min. Descansa 90–120 s en ejercicios grandes y 60–90 s en ejercicios de aislamiento. Elige una carga que te permita completar las repeticiones con técnica correcta y dejando 2–3 repeticiones en reserva.</p><div id="exerciseList"></div>
+ <div class="card"><div class="row"><h3 id="dayTitle">Día 1</h3><span class="pill" id="dayFocus"></span></div><p class="notice"><b>Duración objetivo: 75–90 min.</b> Calentamiento 10 min · fuerza 55–65 min · cardio suave opcional 10–15 min · vuelta a la calma 5 min. Descansa 90–120 s en ejercicios grandes y 60–90 s en ejercicios de aislamiento. Elige una carga que te permita completar las repeticiones con técnica correcta y dejando 2–3 repeticiones en reserva.</p><div class="card" id="restTimerCard" style="background:#202a23;margin:12px 0">
+ <div class="row"><div><div class="eyebrow">Temporizador</div><h3>Descanso entre series</h3></div><span class="pill" id="timerStatus">Preparado</span></div>
+ <div id="timerDisplay" style="font-size:42px;font-weight:850;text-align:center;color:var(--green);font-variant-numeric:tabular-nums;padding:10px 0">01:30</div>
+ <div class="fields">
+  <button class="secondary small" onclick="setRest(60)">60 s</button>
+  <button class="secondary small" onclick="setRest(90)">90 s</button>
+  <button class="secondary small" onclick="setRest(120)">120 s</button>
+ </div>
+ <div class="row" style="margin-top:10px">
+  <button onclick="startPauseTimer()" id="timerStart">Iniciar</button>
+  <button class="secondary" onclick="resetTimer()">Reiniciar</button>
+ </div>
+ <p class="tiny" style="margin-bottom:0">Puedes iniciar el contador al terminar cada serie. Cuando llegue a cero, sonará una alarma si el móvil permite audio.</p>
+</div>
+<div id="exerciseList"></div>
  <button style="width:100%;margin-top:8px" onclick="saveSession()">Guardar entrenamiento de hoy</button></div>
 </section>
 
@@ -142,6 +156,21 @@ function buildRoutine(){
  const p=plans[selectedDay];$("dayTitle").textContent=p.name;$("dayFocus").textContent=p.focus;
  $("exerciseList").innerHTML=p.items.map((it,i)=>{const prev=latest(it[0]);return `<div class="exercise"><div class="exercise-top"><img class="exercise-img" src="assets/${it[4]}" alt="Ilustración de ${it[0]}" loading="lazy"><div><h3>${it[0]}</h3><span class="pill">${it[3]}</span><p><b>${it[1]} series × ${it[2]} repeticiones</b>${it[2]==="Al fallo"?" · hasta el fallo técnico": ""}</p><button class="secondary small" type="button" onclick="toggleTechnique(${i})">Ver técnica</button></div></div><div class="technique" id="tech${i}">Movimiento ilustrado de referencia. Realiza el ejercicio de forma controlada, sin rebotes y con un rango cómodo. Mantén la postura estable y detén la serie si aparece dolor. Pide al monitor que revise tu técnica si no conoces el movimiento.</div><div class="fields"><div><label>Peso (kg)</label><input type="number" min="0" step="0.5" id="w${i}" placeholder="${prev?prev.weight:"0"}" value="${prev?prev.weight:""}"></div><div><label>Series hechas</label><input type="number" min="1" max="10" id="s${i}" value="${it[1]}"></div><div><label>Reps por serie</label><input type="text" id="r${i}" placeholder="Ej. ${it[2]==="Al fallo"?"al fallo":it[2]}"></div></div><div class="actions"><span class="tiny">${prev?`Última vez: ${prev.weight} kg · ${prev.date}`:"Sin registros anteriores"}</span></div></div>`}).join("");
 }
+let restDuration=90, timerRemaining=90, timerInterval=null, timerEndAt=0;
+function fmtTimer(s){const m=Math.floor(s/60),r=s%60;return String(m).padStart(2,"0")+":"+String(r).padStart(2,"0");}
+function drawTimer(){ $("timerDisplay").textContent=fmtTimer(timerRemaining); }
+function setRest(seconds){restDuration=seconds;timerRemaining=seconds;if(timerInterval){clearInterval(timerInterval);timerInterval=null;} $("timerStart").textContent="Iniciar";$("timerStatus").textContent="Preparado";drawTimer();}
+function resetTimer(){if(timerInterval){clearInterval(timerInterval);timerInterval=null;}timerRemaining=restDuration;$("timerStart").textContent="Iniciar";$("timerStatus").textContent="Preparado";drawTimer();}
+function startPauseTimer(){
+ if(timerInterval){clearInterval(timerInterval);timerInterval=null;$("timerStart").textContent="Continuar";$("timerStatus").textContent="Pausado";return;}
+ if(timerRemaining<=0)timerRemaining=restDuration;
+ timerEndAt=Date.now()+timerRemaining*1000;
+ $("timerStart").textContent="Pausar";$("timerStatus").textContent="Descansando";
+ timerInterval=setInterval(()=>{
+  timerRemaining=Math.max(0,Math.ceil((timerEndAt-Date.now())/1000));drawTimer();
+  if(timerRemaining<=0){clearInterval(timerInterval);timerInterval=null;$("timerStart").textContent="Otra vez";$("timerStatus").textContent="¡A entrenar!";try{if(navigator.vibrate)navigator.vibrate([250,120,250]);const Ctx=window.AudioContext||window.webkitAudioContext;if(Ctx){const c=new Ctx(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.value=.12;o.start();o.stop(c.currentTime+.35);}}catch(e){}}
+ },250);
+}
 function selectDay(i){selectedDay=i;buildRoutine();}
 function toggleTechnique(i){const el=$("tech"+i);if(el)el.classList.toggle("open");}
 function latest(name){return [...data.logs].reverse().find(x=>x.exercise===name);}
@@ -172,7 +201,7 @@ function renderBody(){$("bodyHistory").innerHTML=data.body.length?`<table><thead
 function saveProfile(){data.profile={goal:$("goal").value,level:$("level").value};persist();alert("Perfil guardado.");}
 function exportData(){const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="mis-datos-fuerza.json";a.click();URL.revokeObjectURL(a.href);}
 function resetData(){if(confirm("¿Seguro que quieres borrar todos tus entrenamientos y registros?")){data={logs:[],body:[],profile:{}};persist();buildRoutine();}}
-buildRoutine();renderHome();renderHistory();renderBody();
+buildRoutine();renderHome();renderHistory();renderBody();drawTimer();
 if("serviceWorker" in navigator && location.protocol.startsWith("http"))navigator.serviceWorker.register("./sw.js").catch(()=>{});
 </script>
 </body></html>
